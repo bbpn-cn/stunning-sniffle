@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         检测页面中的媒体文件
 // @namespace    http://tampermonkey.net/
-// @version      1.16
+// @version      1.19
 // @description  检测页面中的媒体文件（视频/音频/图片/m3u8），显示资源数量按钮，点击查看链接列表，图片带有内嵌预览，支持全局隐藏/显示预览。按视频>疑似媒体>音频>图片排序，优化手机端和电脑端 UI，增强 iframe 中视频检测、抗广告干扰和脚本稳定性，类型显示为中文。
 // @author       egg
 // @match        *://*/*
@@ -13,47 +13,47 @@
 
     // 检测是否为移动设备（增强检测逻辑）
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
-        window.innerWidth <= 768; // 屏幕宽度小于 768px 也认为是移动设备
+        window.innerWidth <= 768;
 
     // 样式配置（分开移动端和电脑端）
     const styles = {
         button: {
             position: "fixed",
-            bottom: isMobile ? "40px" : "20px", // 移动端更贴近底部
+            bottom: isMobile ? "50px" : "20px",
             right: isMobile ? "10px" : "20px",
             zIndex: "2147483647",
-            padding: isMobile ? "6px 10px" : "10px 16px", // 移动端按钮更小
+            padding: isMobile ? "8px 14px" : "10px 16px",
             background: "linear-gradient(45deg, #007bff, #00c4ff)",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             cursor: "pointer",
-            fontSize: isMobile ? "10px" : "16px", // 移动端字体更小
+            fontSize: isMobile ? "12px" : "16px",
             boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
             transition: "transform 0.2s, box-shadow 0.2s",
         },
         popup: {
             display: "none",
             position: "fixed",
-            bottom: isMobile ? "80px" : "100px", // 移动端更靠上，电脑端与按钮拉开距离
+            bottom: isMobile ? "90px" : "70px", // 手机端缩小间距到 40px，电脑端缩小到 50px
             right: isMobile ? "10px" : "20px",
             zIndex: "2147483647",
             backgroundColor: "#fff",
             border: "1px solid #e0e0e0",
             borderRadius: "10px",
-            padding: isMobile ? "10px" : "15px", // 移动端内边距更小
-            maxWidth: isMobile ? "80vw" : "600px", // 移动端更窄，电脑端更宽
-            maxHeight: isMobile ? "40vh" : "500px", // 移动端更矮，电脑端更高
+            padding: isMobile ? "10px" : "15px",
+            maxWidth: isMobile ? "80vw" : "600px",
+            maxHeight: isMobile ? "30vh" : "500px",
             overflowY: "auto",
             boxShadow: "0 6px 12px rgba(0, 0, 0, 0.15)",
-            fontSize: isMobile ? "10px" : "14px", // 移动端字体更小
+            fontSize: isMobile ? "10px" : "14px",
             transition: "opacity 0.3s ease-in-out",
         },
         header: {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: isMobile ? "10px" : "15px",
+            marginBottom: isMobile ? "8px" : "15px",
         },
         title: {
             margin: "0",
@@ -61,13 +61,13 @@
             color: "#333",
         },
         toggleButton: {
-            padding: isMobile ? "3px 6px" : "5px 10px", // 移动端更小
+            padding: isMobile ? "4px 8px" : "5px 10px",
             backgroundColor: "#dc3545",
             color: "#fff",
             border: "none",
             borderRadius: "5px",
             cursor: "pointer",
-            fontSize: isMobile ? "8px" : "12px", // 移动端字体更小
+            fontSize: isMobile ? "9px" : "12px",
             transition: "background-color 0.2s",
         },
         list: {
@@ -78,8 +78,8 @@
         listItem: {
             display: "flex",
             flexDirection: "column",
-            marginBottom: isMobile ? "10px" : "15px",
-            padding: isMobile ? "5px" : "8px",
+            marginBottom: isMobile ? "8px" : "15px",
+            padding: isMobile ? "4px" : "8px",
             borderBottom: "1px solid #f0f0f0",
         },
         link: {
@@ -91,7 +91,7 @@
         },
         preview: {
             display: "block",
-            maxWidth: isMobile ? "80px" : "150px", // 移动端预览图更小
+            maxWidth: isMobile ? "80px" : "150px",
             maxHeight: isMobile ? "80px" : "150px",
             objectFit: "contain",
             border: "1px solid #ddd",
@@ -392,7 +392,7 @@
 
     window.addEventListener("scroll", () => {
         const { button } = ensureUIElements();
-        button.style.bottom = isMobile ? "40px" : "20px";
+        button.style.bottom = isMobile ? "50px" : "20px";
         button.style.right = isMobile ? "10px" : "20px";
     });
 
