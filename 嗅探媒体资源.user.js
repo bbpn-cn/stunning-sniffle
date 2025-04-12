@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         检测页面中的媒体文件
 // @namespace    http://tampermonkey.net/
-// @version      1.15
-// @description  检测页面中的媒体文件（视频/音频/图片/m3u8），显示资源数量按钮，点击查看链接列表，图片带有内嵌预览，支持全局隐藏/显示预览。按视频>疑似媒体>音频>图片排序，优化手机端和电脑端体验，增强 iframe 中视频检测、抗广告干扰和脚本稳定性，类型显示为中文。
+// @version      1.16
+// @description  检测页面中的媒体文件（视频/音频/图片/m3u8），显示资源数量按钮，点击查看链接列表，图片带有内嵌预览，支持全局隐藏/显示预览。按视频>疑似媒体>音频>图片排序，优化手机端和电脑端 UI，增强 iframe 中视频检测、抗广告干扰和脚本稳定性，类型显示为中文。
 // @author       egg
 // @match        *://*/*
 // @grant        none
@@ -11,62 +11,63 @@
 (function () {
     "use strict";
 
-    // 是否为移动设备
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    // 检测是否为移动设备（增强检测逻辑）
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
+        window.innerWidth <= 768; // 屏幕宽度小于 768px 也认为是移动设备
 
-    // 样式配置
+    // 样式配置（分开移动端和电脑端）
     const styles = {
         button: {
             position: "fixed",
-            bottom: isMobile ? "60px" : "20px",
+            bottom: isMobile ? "40px" : "20px", // 移动端更贴近底部
             right: isMobile ? "10px" : "20px",
             zIndex: "2147483647",
-            padding: isMobile ? "8px 12px" : "10px 16px",
-            background: "linear-gradient(45deg, #007bff, #00c4ff)", // 渐变色
+            padding: isMobile ? "6px 10px" : "10px 16px", // 移动端按钮更小
+            background: "linear-gradient(45deg, #007bff, #00c4ff)",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             cursor: "pointer",
-            fontSize: isMobile ? "12px" : "16px",
+            fontSize: isMobile ? "10px" : "16px", // 移动端字体更小
             boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-            transition: "transform 0.2s, box-shadow 0.2s", // 动画效果
+            transition: "transform 0.2s, box-shadow 0.2s",
         },
         popup: {
             display: "none",
             position: "fixed",
-            bottom: isMobile ? "100px" : "60px",
+            bottom: isMobile ? "80px" : "100px", // 移动端更靠上，电脑端与按钮拉开距离
             right: isMobile ? "10px" : "20px",
             zIndex: "2147483647",
             backgroundColor: "#fff",
             border: "1px solid #e0e0e0",
             borderRadius: "10px",
-            padding: "15px",
-            maxWidth: isMobile ? "90vw" : "500px",
-            maxHeight: isMobile ? "50vh" : "400px",
+            padding: isMobile ? "10px" : "15px", // 移动端内边距更小
+            maxWidth: isMobile ? "80vw" : "600px", // 移动端更窄，电脑端更宽
+            maxHeight: isMobile ? "40vh" : "500px", // 移动端更矮，电脑端更高
             overflowY: "auto",
             boxShadow: "0 6px 12px rgba(0, 0, 0, 0.15)",
-            fontSize: isMobile ? "12px" : "14px",
-            transition: "opacity 0.3s ease-in-out", // 淡入淡出动画
+            fontSize: isMobile ? "10px" : "14px", // 移动端字体更小
+            transition: "opacity 0.3s ease-in-out",
         },
         header: {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "15px",
+            marginBottom: isMobile ? "10px" : "15px",
         },
         title: {
             margin: "0",
-            fontSize: isMobile ? "14px" : "16px",
+            fontSize: isMobile ? "12px" : "16px",
             color: "#333",
         },
         toggleButton: {
-            padding: isMobile ? "4px 8px" : "5px 10px",
+            padding: isMobile ? "3px 6px" : "5px 10px", // 移动端更小
             backgroundColor: "#dc3545",
             color: "#fff",
             border: "none",
             borderRadius: "5px",
             cursor: "pointer",
-            fontSize: isMobile ? "10px" : "12px",
+            fontSize: isMobile ? "8px" : "12px", // 移动端字体更小
             transition: "background-color 0.2s",
         },
         list: {
@@ -77,21 +78,21 @@
         listItem: {
             display: "flex",
             flexDirection: "column",
-            marginBottom: "15px",
-            padding: "8px",
+            marginBottom: isMobile ? "10px" : "15px",
+            padding: isMobile ? "5px" : "8px",
             borderBottom: "1px solid #f0f0f0",
         },
         link: {
             wordBreak: "break-all",
             color: "#007bff",
             textDecoration: "none",
-            fontSize: isMobile ? "12px" : "14px",
+            fontSize: isMobile ? "10px" : "14px",
             marginBottom: "5px",
         },
         preview: {
             display: "block",
-            maxWidth: isMobile ? "100px" : "150px",
-            maxHeight: isMobile ? "100px" : "150px",
+            maxWidth: isMobile ? "80px" : "150px", // 移动端预览图更小
+            maxHeight: isMobile ? "80px" : "150px",
             objectFit: "contain",
             border: "1px solid #ddd",
             borderRadius: "5px",
@@ -106,15 +107,17 @@
         Object.assign(button.style, styles.button);
         button.innerText = "检测中...";
 
-        // 鼠标悬停效果
-        button.addEventListener("mouseover", () => {
-            button.style.transform = "scale(1.05)";
-            button.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.3)";
-        });
-        button.addEventListener("mouseout", () => {
-            button.style.transform = "scale(1)";
-            button.style.boxShadow = styles.button.boxShadow;
-        });
+        // 鼠标悬停效果（电脑端）
+        if (!isMobile) {
+            button.addEventListener("mouseover", () => {
+                button.style.transform = "scale(1.05)";
+                button.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.3)";
+            });
+            button.addEventListener("mouseout", () => {
+                button.style.transform = "scale(1)";
+                button.style.boxShadow = styles.button.boxShadow;
+            });
+        }
 
         return button;
     }
@@ -183,13 +186,11 @@
         const mediaList = [];
         const seenUrls = new Set();
 
-        // 查找视频、音频、图片和 iframe
         const videos = document.querySelectorAll("video source, video[src], source[src]");
         const audios = document.querySelectorAll("audio source, audio[src]");
         const images = document.querySelectorAll("img[src]");
         const iframes = document.querySelectorAll("iframe[src]");
 
-        // 处理视频
         videos.forEach((video) => {
             const src = video.src || video.getAttribute("src");
             if (src && !seenUrls.has(src)) {
@@ -198,7 +199,6 @@
             }
         });
 
-        // 处理音频
         audios.forEach((audio) => {
             const src = audio.src || audio.getAttribute("src");
             if (src && !seenUrls.has(src)) {
@@ -207,7 +207,6 @@
             }
         });
 
-        // 处理图片
         images.forEach((img) => {
             const src = img.src || img.getAttribute("src");
             if (src && !seenUrls.has(src) && !src.includes("data:image")) {
@@ -216,7 +215,6 @@
             }
         });
 
-        // 处理 iframe
         iframes.forEach((iframe) => {
             const src = iframe.src || iframe.getAttribute("src");
             if (src && !seenUrls.has(src)) {
@@ -245,7 +243,6 @@
             }
         });
 
-        // 查找 <source> 标签中的 m3u8
         const sources = document.querySelectorAll("source[src]");
         sources.forEach((source) => {
             const src = source.src || source.getAttribute("src");
@@ -255,7 +252,6 @@
             }
         });
 
-        // 查找 script 标签中的视频链接
         const scripts = document.querySelectorAll("script");
         scripts.forEach((script) => {
             const text = script.textContent || script.innerHTML;
@@ -271,7 +267,6 @@
             }
         });
 
-        // 查找 a 标签中的视频链接
         const links = document.querySelectorAll("a[href]");
         links.forEach((link) => {
             const href = link.href;
@@ -285,10 +280,9 @@
             }
         });
 
-        // 按类型权重排序：视频 > 疑似媒体 > 音频 > 图片
         const typeWeights = {
             video: 4,
-            iframe: 3, // 疑似媒体
+            iframe: 3,
             audio: 2,
             image: 1,
         };
@@ -298,10 +292,8 @@
         return mediaList;
     }
 
-    // 全局状态：是否显示图片预览
     let showPreviews = true;
 
-    // 类型映射到中文
     const typeLabels = {
         video: "视频",
         audio: "音频",
@@ -309,16 +301,13 @@
         iframe: "疑似媒体",
     };
 
-    // 更新 UI
     function updateUserInterface() {
         const { button, popup } = ensureUIElements();
         const mediaList = findMediaResources();
         button.innerText = `媒体资源: ${mediaList.length}`;
 
-        // 清空弹窗内容
         popup.innerHTML = "";
 
-        // 创建头部：标题 + 切换预览按钮
         const header = document.createElement("div");
         Object.assign(header.style, styles.header);
 
@@ -330,17 +319,18 @@
         const toggleButton = document.createElement("button");
         Object.assign(toggleButton.style, styles.toggleButton);
         toggleButton.textContent = showPreviews ? "关闭预览" : "显示预览";
-        toggleButton.addEventListener("mouseover", () => {
-            toggleButton.style.backgroundColor = "#c82333";
-        });
-        toggleButton.addEventListener("mouseout", () => {
-            toggleButton.style.backgroundColor = "#dc3545";
-        });
+        if (!isMobile) {
+            toggleButton.addEventListener("mouseover", () => {
+                toggleButton.style.backgroundColor = "#c82333";
+            });
+            toggleButton.addEventListener("mouseout", () => {
+                toggleButton.style.backgroundColor = "#dc3545";
+            });
+        }
         header.appendChild(toggleButton);
 
         popup.appendChild(header);
 
-        // 切换预览显示
         toggleButton.onclick = () => {
             showPreviews = !showPreviews;
             toggleButton.textContent = showPreviews ? "关闭预览" : "显示预览";
@@ -350,7 +340,6 @@
             });
         };
 
-        // 显示媒体资源列表
         if (mediaList.length === 0) {
             const message = document.createElement("p");
             message.textContent = "未找到媒体文件";
@@ -390,27 +379,23 @@
         }
     }
 
-    // 初次加载
     setTimeout(() => {
         ensureUIElements();
         updateUserInterface();
     }, 5000);
 
-    // 监听 DOM 变化
     const observer = new MutationObserver(() => {
         ensureUIElements();
         setTimeout(updateUserInterface, 500);
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // 监听滚动事件，防止按钮被覆盖
     window.addEventListener("scroll", () => {
         const { button } = ensureUIElements();
-        button.style.bottom = isMobile ? "60px" : "20px";
+        button.style.bottom = isMobile ? "40px" : "20px";
         button.style.right = isMobile ? "10px" : "20px";
     });
 
-    // 定期检查，确保按钮和弹窗存在
     setInterval(() => {
         ensureUIElements();
     }, 2000);
